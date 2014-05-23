@@ -48,15 +48,20 @@ FIND_LIBRARY(GLFW_LIBRARIES DOC "Absolute path to GLFW library."
   ${GLFW_ROOT_DIR}/lib-msvc100/release # added by ptr
 )
 
-SET(GLFW_LIBRARY ${GLFW_LIBRARIES})
-
 IF( APPLE )
     find_library(IOKIT NAMES IOKit)
     #find_library(OpenGL NAMES OpenGL)
     find_library(COREVIDEO NAMES CoreVideo)
     find_library(COCOA NAMES Cocoa)
     SET(GLFW_LIBRARIES ${GLFW_LIBRARIES} ${IOKIT} ${COREVIDEO} ${COCOA})
-endif( APPLE )
+elseif(OS_LINUX)
+  find_library(x11 NAMES X11)
+  find_library(xrandr NAMES Xrandr)
+  find_library(xi NAMES Xi)
+  find_library(xxf86vm NAMES Xxf86vm)
+  find_library(pthread NAMES pthread)
+  SET(GLFW_LIBRARIES ${GLFW_LIBRARIES} ${x11} ${xrandr} ${xi} ${xxf86vm} ${pthread})
+endif()
 
 IF(GLFW_LIBRARIES AND GLFW_INCLUDE_DIRS)
   SET(GLFW_FOUND TRUE)

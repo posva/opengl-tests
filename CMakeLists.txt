@@ -21,6 +21,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 elseif (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   set(OS_LINUX 1)
   set(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} ${PROJECT_SOURCE_DIR}/extlibs/libs-linux)
+  add_definitions(-DGLEW_STATIC)
 elseif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   set(OS_OSX 1)
   set(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} ${PROJECT_SOURCE_DIR}/extlibs/libs-osx)
@@ -30,8 +31,25 @@ else()
 endif()
 
 # set some options
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CPP_FLAGS_DEBUG} -g -Wall -Wextra -O0 -std=c++11")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CPP_FLAGS_RELEASE} -Wall -Wextra -O2 -std=c++11")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CPP_FLAGS_DEBUG} -g -Wall -Wextra -O0")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CPP_FLAGS_RELEASE} -Wall -Wextra -O2")
+
+# Compiler-specific C++11 activation.
+if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
+    execute_process(
+        COMMAND ${CMAKE_CXX_COMPILER} -dumpversion OUTPUT_VARIABLE GCC_VERSION)
+    if (NOT (GCC_VERSION VERSION_GREATER 4.7 OR GCC_VERSION VERSION_EQUAL 4.7))
+        message("WARNING: ${PROJECT_NAME} requires g++ 4.7 or greater in order to use c++11. Instead c++0x will be used.")
+        set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CPP_FLAGS_DEBUG} -std=c++0x")
+        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CPP_FLAGS_RELEASE} -std=c++0x")
+    endif ()
+elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CPP_FLAGS_DEBUG} -std=c++11")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CPP_FLAGS_RELEASE} -std=c++11")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
+else ()
+    message(FATAL_ERROR "Your C++ compiler does not support C++11.")
+endif ()
 
 set(SRC ${PROJECT_SOURCE_DIR}/src)
 
@@ -56,10 +74,10 @@ add_executable(
 find_package(OpenGL REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(GLEW REQUIRED)
-include_directories( ${OPENGL_INCLUDE_DIRS} ${GLEW_INCLUDE_DIRS} ${GLFW_INCLUDE_DIR} )
+include_directories( ${OPENGL_INCLUDE_DIRS} ${GLEW_INCLUDE_PATH} ${GLFW_INCLUDE_DIR} )
 
 # libs
-target_link_libraries(${EXEC} ${GLEW_LIBRARIES} ${GLFW_LIBRARIES} ${OPENGL_LIBRARIES})
+target_link_libraries(${EXEC} ${GLEW_LIBRARY} ${GLFW_LIBRARIES} ${OPENGL_LIBRARIES})
 
 # tests
 #enable_testing()
