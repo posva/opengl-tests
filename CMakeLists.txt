@@ -2,13 +2,11 @@ cmake_minimum_required(VERSION 2.6)
 
 # define a macro that helps defining an option
 macro(set_option var default type docstring)
-    if(NOT DEFINED ${var})
-        set(${var} ${default})
-    endif()
-    set(${var} ${${var}} CACHE ${type} ${docstring} FORCE)
+  set(${var} ${default})
+  set(${var} ${${var}} CACHE ${type} ${docstring} FORCE)
 endmacro()
 
-set_option(CMAKE_BUILD_TYPE Release STRING "Debug: -g -O0, Release: -O2")
+set_option(CMAKE_BUILD_TYPE RELEASE STRING "DEBUG: -g -O0, RELEASE: -O2")
 
 project(opengl-tests)
 
@@ -31,8 +29,8 @@ else()
 endif()
 
 # set some options
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CPP_FLAGS_DEBUG} -g -Wall -Wextra -O0")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CPP_FLAGS_RELEASE} -Wall -Wextra -O2")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -Wall -Wextra -O0")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wall -Wextra -O2")
 
 # Compiler-specific C++11 activation.
 if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
@@ -40,13 +38,10 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
         COMMAND ${CMAKE_CXX_COMPILER} -dumpversion OUTPUT_VARIABLE GCC_VERSION)
     if (NOT (GCC_VERSION VERSION_GREATER 4.7 OR GCC_VERSION VERSION_EQUAL 4.7))
         message("WARNING: ${PROJECT_NAME} requires g++ 4.7 or greater in order to use c++11. Instead c++0x will be used.")
-        set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CPP_FLAGS_DEBUG} -std=c++0x")
-        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CPP_FLAGS_RELEASE} -std=c++0x")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX} -std=c++0x")
     endif ()
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CPP_FLAGS_DEBUG} -std=c++11")
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CPP_FLAGS_RELEASE} -std=c++11")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -stdlib=libc++")
 else ()
     message(FATAL_ERROR "Your C++ compiler does not support C++11.")
 endif ()
