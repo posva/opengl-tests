@@ -5,6 +5,7 @@
 #define nullptr NULL
 #endif
 #include <cmath>
+#include <stdlib.h>
 #include <cassert>
 #include <AntTweakBar.h>
 #include "stb_image.h"
@@ -15,6 +16,10 @@
 
 #define RAD2DEG(X) (float)(360.0*(X)/(2.0*M_PI))
 #define DEG2RAD(X) (float)(2.0*M_PI*(X)/360.0)
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 const GLchar *vxShaderSrc = R"(
 #version 150 core
@@ -117,7 +122,10 @@ int main()
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL); // can be GLFW_CURSOR_HIDDEN
 
      // Initialize AntTweakBar
-    TwInit(TW_OPENGL, NULL);
+    TwInit(TW_OPENGL_CORE, NULL);
+
+    glEnable (GL_BLEND);
+    glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // Create a tweak bar
     bar = TwNewBar("TweakBar");
@@ -302,10 +310,11 @@ int main()
 
         glUniform2f(uniPos, 0.f, 0.f);
         // Draw tweak bars
-        //glUseProgram(0);
+        glUseProgram(0);
         glBindVertexArray(0);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+        glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
         TwDraw();
         glUseProgram(shaderProgram);
         glBindVertexArray(vao);

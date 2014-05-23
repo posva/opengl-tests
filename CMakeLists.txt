@@ -15,7 +15,7 @@ set(CMAKE_INCLUDE_PATH ${CMAKE_INCLUDE_PATH} ${PROJECT_SOURCE_DIR}/extlibs/heade
 if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
   set(OS_WINDOWS 1)
   set(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} ${PROJECT_SOURCE_DIR}/extlibs/libs-win64)
-  add_definitions(-DGLEW_STATIC)
+  add_definitions(-DGLEW_NO_GLU -DGLEW_BUILD)
 elseif (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   set(OS_LINUX 1)
   set(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} ${PROJECT_SOURCE_DIR}/extlibs/libs-linux)
@@ -29,8 +29,10 @@ else()
 endif()
 
 # set some options
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -Wall -Wextra -O0")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wall -Wextra -O2")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -W -O2")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2")
 
 # Compiler-specific C++11 activation.
 if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
@@ -39,6 +41,8 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
     if (NOT (GCC_VERSION VERSION_GREATER 4.7 OR GCC_VERSION VERSION_EQUAL 4.7))
         message("WARNING: ${PROJECT_NAME} requires g++ 4.7 or greater in order to use c++11. Instead c++0x will be used.")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX} -std=c++0x")
+    else()
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
     endif ()
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -stdlib=libc++")
@@ -68,7 +72,6 @@ add_executable(
 # Finding libs
 find_package(OpenGL REQUIRED)
 find_package(glfw3 REQUIRED)
-find_package(GLEW REQUIRED)
 find_package(AntTweakBar REQUIRED)
 include_directories( ${OPENGL_INCLUDE_DIRS} ${GLEW_INCLUDE_PATH} ${GLFW_INCLUDE_DIR} ${ANTTWEAKBAR_INCLUDE_DIR} )
 
