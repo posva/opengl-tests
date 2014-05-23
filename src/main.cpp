@@ -44,7 +44,7 @@ int main()
 
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
-#ifdef __APPLE__ // TODO is it ok to use it on windows?
+#ifdef __APPLE__ // TODO is it ok to use it on Windows and Linux?
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -53,7 +53,7 @@ int main()
 
     GLFWwindow* window = glfwCreateWindow(800, 600, "OpenGL", nullptr, nullptr); // Windowed
     if (!window) {
-        std::cerr<<"Error creating Window...\n";
+        std::cerr<<"Error creating window...\n";
         return 2;
     }
 
@@ -73,9 +73,10 @@ int main()
     glGenBuffers(1, &vbo); // Generate 1 buffer
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     GLfloat vertices[] = {
-        0.0f,  0.5f, 1.0f, 0.0f, 0.0f, 1.f, // Vertex 1: Red
-        0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.f, // Vertex 2: Green
-        -0.5f, -0.5f, 0.0f, 0.30f, 1.0f, 1.f, // Vertex 3: Blue
+        -0.5f, -0.5f, 1.f, 1.f, 1.0f, 1.f,
+        -0.5f,  0.5f, 1.0f, 0.0f, 0.0f, 1.f,
+        0.5f, -0.5f, 0.0f, 0.f, 1.0f, 1.f,
+        0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 1.f,
         // some extra for elements testing
         0.0f,  0.5f, 1.0f, 0.0f, 0.0f, 1.f, // Vertex 1: Red
         0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.f, // Vertex 2: Green
@@ -87,7 +88,7 @@ int main()
 
     // elemets buffer object allows to use the same vertex multiple times
     GLuint elements[] = {
-        3, 4, 5
+        0, 1, 2, 3
     };
     GLuint ebo;
     glGenBuffers(1, &ebo);
@@ -131,10 +132,12 @@ int main()
     glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, 6*sizeof(GLfloat), 0);
     GLint colAttrib = glGetAttribLocation(shaderProgram, "color");
     glEnableVertexAttribArray(colAttrib);
-    glVertexAttribPointer(colAttrib, 3, GL_FLOAT, GL_FALSE,
+    glVertexAttribPointer(colAttrib, 4, GL_FLOAT, GL_FALSE,
                           6*sizeof(GLfloat), (void*)(2*sizeof(GLfloat)));
 
     GLint uniPos = glGetUniformLocation(shaderProgram, "offset");
+
+    //glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
 
     while(!glfwWindowShouldClose(window))
     {
@@ -148,9 +151,8 @@ int main()
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        glDrawArrays(GL_TRIANGLES, 0, 3); // arrays need to specify  every vertex
-        glUniform2f(uniPos, cos(time*4.f)*0.5f+.5f, sin(time*4.f)*0.5f);
-        glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0); // we can share vertex and we specify indexes
+        glUniform2f(uniPos, cos(time*4.f)*0.5f, sin(time*4.f)*0.5f);
+        glDrawElements(GL_TRIANGLE_STRIP, 4, GL_UNSIGNED_INT, 0); // we can share vertex and we specify indexes
 
         glfwSwapBuffers(window);
         glfwPollEvents();
