@@ -2,7 +2,7 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include <cmath>
-//Win: mingw32-g++.exe main.cpp -std=c++11 -DGLEW_STATIC -lglew32 -lglfw3 -lglu32 -lopengl32 -lglut32 -lgdi32
+//Win: mingw32-g++.exe main.cpp -std=c++11 -DGLEW_STATIC -lglew32 -lglfw3 -lglu32 -lopengl32 -lgdi32
 // OS X: g++ main.cpp -std=c++11 -DGLEW_STATIC -lGLEW -lglfw3 -framework OpenGL
 
 const GLchar *vxShaderSrc = R"(
