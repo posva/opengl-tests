@@ -2,7 +2,8 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include <cmath>
-//mingw32-g++.exe .\main.cpp -std=c++11 -DGLEW_STATIC -lglew32 -lglfw3 -lglu32 -lopengl32 -lglut32 -lgdi32
+//Win: mingw32-g++.exe main.cpp -std=c++11 -DGLEW_STATIC -lglew32 -lglfw3 -lglu32 -lopengl32 -lglut32 -lgdi32
+// OS X: g++ main.cpp -std=c++11 -DGLEW_STATIC -lGLEW -lglfw3 -framework OpenGL
 
 const GLchar *vxShaderSrc = R"(
 #version 150 core
@@ -33,18 +34,33 @@ void main()
 
 int main()
 {
-    glfwInit();
+    if (!glfwInit()) {
+        std::cerr<<"Error initializing glfw...\n";
+        return 1;
+    }
+
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+#ifdef __APPLE__
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+#endif
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
     GLFWwindow* window = glfwCreateWindow(800, 600, "OpenGL", nullptr, nullptr); // Windowed
+    if (!window) {
+        std::cerr<<"Error creating Window...\n";
+        return 2;
+    }
+
     glfwMakeContextCurrent(window);
 
     glewExperimental = GL_TRUE;
-    glewInit();
+    if (glewInit() != GLEW_NO_ERROR) {
+        std::cerr<<"Error initializing GLEW...\n";
+        return 1;
+    }
 
     GLuint vao;
     glGenVertexArrays(1, &vao);
@@ -54,12 +70,12 @@ int main()
     glGenBuffers(1, &vbo); // Generate 1 buffer
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     GLfloat vertices[] = {
-         0.0f,  0.5f, 1.0f, 0.0f, 0.0f, 1.f, // Vertex 1: Red
-         0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.f, // Vertex 2: Green
+        0.0f,  0.5f, 1.0f, 0.0f, 0.0f, 1.f, // Vertex 1: Red
+        0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.f, // Vertex 2: Green
         -0.5f, -0.5f, 0.0f, 0.30f, 1.0f, 1.f, // Vertex 3: Blue
         // some extra for elements testing
         0.0f,  0.5f, 1.0f, 0.0f, 0.0f, 1.f, // Vertex 1: Red
-         0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.f, // Vertex 2: Green
+        0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.f, // Vertex 2: Green
         -0.25f, -0.5f, 0.0f, 0.f, 1.0f, 1.f // Vertex 3: Blue
     };
 
@@ -113,14 +129,14 @@ int main()
     GLint colAttrib = glGetAttribLocation(shaderProgram, "color");
     glEnableVertexAttribArray(colAttrib);
     glVertexAttribPointer(colAttrib, 3, GL_FLOAT, GL_FALSE,
-                       6*sizeof(GLfloat), (void*)(2*sizeof(GLfloat)));
+                          6*sizeof(GLfloat), (void*)(2*sizeof(GLfloat)));
 
     GLint uniPos = glGetUniformLocation(shaderProgram, "offset");
 
     while(!glfwWindowShouldClose(window))
     {
         if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, GL_TRUE);
+            glfwSetWindowShouldClose(window, GL_TRUE);
 
         float time =  (float)glfwGetTime();
         glUniform2f(uniPos, -.5f, sin(time*4.f)*0.5f);
