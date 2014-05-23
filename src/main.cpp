@@ -54,6 +54,7 @@ int main()
     GLFWwindow* window = glfwCreateWindow(800, 600, "OpenGL", nullptr, nullptr); // Windowed
     if (!window) {
         std::cerr<<"Error creating window...\n";
+        glfwTerminate();
         return 2;
     }
 
@@ -62,6 +63,7 @@ int main()
     glewExperimental = GL_TRUE;
     if (glewInit() != GLEW_NO_ERROR) {
         std::cerr<<"Error initializing GLEW...\n";
+        glfwTerminate();
         return 1;
     }
 
