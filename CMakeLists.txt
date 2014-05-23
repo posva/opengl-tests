@@ -6,7 +6,7 @@ macro(set_option var default type docstring)
   set(${var} ${${var}} CACHE ${type} ${docstring} FORCE)
 endmacro()
 
-set_option(CMAKE_BUILD_TYPE RELEASE STRING "DEBUG: -g -O0, RELEASE: -O2")
+set_option(CMAKE_BUILD_TYPE DEBUG STRING "DEBUG: -g -O0, RELEASE: -O2")
 
 project(opengl-tests)
 
