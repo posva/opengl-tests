@@ -13,6 +13,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 #define RAD2DEG(X) (float)(360.0*(X)/(2.0*M_PI))
 #define DEG2RAD(X) (float)(2.0*M_PI*(X)/360.0)
@@ -24,10 +25,9 @@
 const GLchar *vxShaderSrc = R"(
 #version 150 core
 
-in vec2 position;
+in vec3 position;
 in vec4 color;
 in vec2 texcoord;
-uniform vec2 offset;
 uniform mat4 model, view, proj;
 
 out vec4 Color;
@@ -37,7 +37,7 @@ void main()
 {
     Color = color;
     Texcoord = texcoord;
-    gl_Position = proj * view * model * vec4(position+offset, 0.0, 1.0);
+    gl_Position = proj * view * model * vec4(position, 1.0);
 }
 )";
 
@@ -46,14 +46,14 @@ const GLchar *fragShaderSrc = R"(
 
 in vec4 Color;
 in vec2 Texcoord;
-uniform float time, force;
+uniform float time, force, amp;
 out vec4 outColor;
 uniform sampler2D tex, tex2;
 
 void main()
 {
     vec4 texC1 = texture(tex, Texcoord),
-         texC2 = texture(tex2, vec2(Texcoord.x + force*sin(Texcoord.y * 60.0 + time) / 3.0, Texcoord.y));
+         texC2 = texture(tex2, vec2(Texcoord.x + force*sin((Texcoord.y * 60.0 + time)*amp) / 3.0, Texcoord.y));
     outColor = vec4(mix(texC1, texC2, 1.0).rgb, Texcoord.y);
 
 }
@@ -81,17 +81,17 @@ unsigned char* loadImage(const char* file, int &width, int &height)
 
 inline void freeImage(unsigned char* ptr) { stbi_image_free(ptr); }
 
-inline void TwEventMouseButtonGLFW3(GLFWwindow* window, int button, int action, int mods)
+inline void TwEventMouseButtonGLFW3(GLFWwindow* /*window*/, int button, int action, int /*mods*/)
 {TwEventMouseButtonGLFW(button, action);}
-inline void TwEventMousePosGLFW3(GLFWwindow* window, double xpos, double ypos)
+inline void TwEventMousePosGLFW3(GLFWwindow* /*window*/, double xpos, double ypos)
 {TwMouseMotion(int(xpos), int(ypos));}
-inline void TwEventMouseWheelGLFW3(GLFWwindow* window, double xoffset, double yoffset)
+inline void TwEventMouseWheelGLFW3(GLFWwindow* /*window*/, double /*xoffset*/, double yoffset)
 {TwEventMouseWheelGLFW(yoffset);}
-inline void TwEventKeyGLFW3(GLFWwindow* window, int key, int scancode, int action, int mods)
+inline void TwEventKeyGLFW3(GLFWwindow* /*window*/, int key, int /*scancode*/, int action, int /*mods*/)
 {TwEventKeyGLFW(key, action);}
-inline void TwEventCharGLFW3(GLFWwindow* window, int codepoint)
+inline void TwEventCharGLFW3(GLFWwindow* /*window*/, int codepoint)
 {TwEventCharGLFW(codepoint, GLFW_PRESS);}
-inline void TwWindowSizeGLFW3(GLFWwindow* window, int width, int height)
+inline void TwWindowSizeGLFW3(GLFWwindow* /*window*/, int width, int height)
 {TwWindowSize(width, height);}
 
 
@@ -131,8 +131,10 @@ int main()
     bar = TwNewBar("TweakBar");
     TwWindowSize(800, 600);
     int wire = 0;
-    float force = 0.05;
+    float force = 0.05, amp = 1.f, size = 1.f;
     float bgColor[] = { 0.1f, 0.2f, 0.4f };
+    glm::vec3 cameraPos(1.f, 1.f, 1.f);
+    glm::quat quatRot;
     TwDefine(" GLOBAL help='This example shows how to integrate AntTweakBar with GLFW and OpenGL.' "); // Message added to the help bar.
     // Add 'wire' to 'bar': it is a modifable variable of type TW_TYPE_BOOL32 (32 bits boolean). Its key shortcut is [w].
     TwAddVarRW(bar, "wire", TW_TYPE_BOOL32, &wire, 
@@ -142,6 +144,20 @@ int main()
     // Add 'speed' to 'bar': it is a modifable (RW) variable of type TW_TYPE_DOUBLE. Its key shortcuts are [s] and [S].
     TwAddVarRW(bar, "force", TW_TYPE_FLOAT, &force, 
                " label='Rot speed' min=0.01 max=1 step=.01 keyIncr=f keyDecr=F help='Rotation speed (turns/second)' ");
+    TwAddVarRW(bar, "amp", TW_TYPE_FLOAT, &amp, 
+               " label='Amplitude' min=0.01 max=10 step=.01 keyIncr=a keyDecr=A help='sin amplitude' ");
+    TwAddVarRW(bar, "size", TW_TYPE_FLOAT, &size, 
+               " label='Size' min=0.1 max=5 step=.1 help='Size of scale' ");
+    TwAddVarRW(bar, "Rotation", TW_TYPE_QUAT4F, glm::value_ptr(quatRot), "opened=true axisz=-z");
+
+    TwStructMember vec3Members[] = {
+        { "x", TW_TYPE_FLOAT, offsetof(glm::vec3, x), "step=0.1" },
+        { "y", TW_TYPE_FLOAT, offsetof(glm::vec3, y), "step=0.1" },
+        { "z", TW_TYPE_FLOAT, offsetof(glm::vec3, z), "step=0.1" }
+    };
+    TwType vec3Type;
+    vec3Type = TwDefineStruct("vec3", vec3Members, 3, sizeof(float)*3, NULL, NULL);
+    TwAddVarRW(bar, "cameraPos", vec3Type, glm::value_ptr(cameraPos), "label='Camera Position'");
 
 
     // Set GLFW event callbacks
@@ -171,10 +187,15 @@ int main()
     std::cout << "Created Arrray with id " << vbo << "\n";
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     GLfloat vertices[] = {
-        -0.5f, -0.5f, 1.f, 1.f, 1.0f, 1.f, 0.f, 0.f,
-        -0.5f,  0.5f, 1.0f, 0.0f, 0.0f, 1.f, 0.f, 1.f,
-        0.5f, -0.5f, 0.0f, 0.f, 1.0f, 1.f, 1.f, 0.f,
-        0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 1.f, 1.f, 1.f
+        -0.5f, -0.5f, -0.5f, 1.f, 1.f, 1.0f, 1.f, 0.f, 0.f,
+        -0.5f,  0.5f, -0.5f, 1.0f, 0.0f, 0.0f, 1.f, 0.f, 1.f,
+        0.5f, -0.5f, -0.5f, 0.0f, 0.f, 1.0f, 1.f, 1.f, 0.f,
+        0.5f, 0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.f, 1.f, 1.f,
+
+        -0.5f, -0.5f, 0.5f, 1.f, 1.f, 1.0f, 1.f, 0.f, 0.f,
+        -0.5f,  0.5f, 0.5f, 1.0f, 0.0f, 0.0f, 1.f, 0.f, 1.f,
+        0.5f, -0.5f, 0.5f, 0.0f, 0.f, 1.0f, 1.f, 1.f, 0.f,
+        0.5f, 0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 1.f, 1.f, 1.f,
     };
 
     // size is actually sizeof(float)*vertices.length
@@ -202,8 +223,8 @@ int main()
         GL_UNSIGNED_BYTE, img);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST); // LINEAR is usually better
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // LINEAR is usually better
     glGenerateMipmap(GL_TEXTURE_2D);
     freeImage(img);
 
@@ -254,15 +275,15 @@ int main()
 
     GLint posAttrib = glGetAttribLocation(shaderProgram, "position");
     glEnableVertexAttribArray(posAttrib);
-    glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, 8*sizeof(GLfloat), 0);
+    glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, 9*sizeof(GLfloat), 0);
     GLint colAttrib = glGetAttribLocation(shaderProgram, "color");
     glEnableVertexAttribArray(colAttrib);
     glVertexAttribPointer(colAttrib, 4, GL_FLOAT, GL_FALSE,
-                          8*sizeof(GLfloat), (void*)(2*sizeof(GLfloat)));
+                          9*sizeof(GLfloat), (void*)(3*sizeof(GLfloat)));
     GLint texAttrib = glGetAttribLocation(shaderProgram, "texcoord");
     glEnableVertexAttribArray(texAttrib);
     glVertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE,
-                           8*sizeof(float), (void*)(6*sizeof(float)));
+                           9*sizeof(float), (void*)(7*sizeof(float)));
 
     GLint uniPos = glGetUniformLocation(shaderProgram, "offset");
 
@@ -270,7 +291,8 @@ int main()
     glUniform1i(glGetUniformLocation(shaderProgram, "tex2"), 1);
 
     GLint timePos = glGetUniformLocation(shaderProgram, "time"),
-          forcePos = glGetUniformLocation(shaderProgram, "force");
+          forcePos = glGetUniformLocation(shaderProgram, "force"),
+          uniAmp = glGetUniformLocation(shaderProgram, "amp");
 
     glm::mat4 trans;
     trans = glm::rotate(trans, DEG2RAD(160.0f), glm::vec3(0.0f, 0.0f, 1.0f));
@@ -279,7 +301,7 @@ int main()
     glUniformMatrix4fv(uniTrans, 1, GL_FALSE, glm::value_ptr(trans));
 
     glm::mat4 view = glm::lookAt(
-        glm::vec3(1.2f, 1.2f, 1.2f),
+        cameraPos,
         glm::vec3(0.0f, 0.0f, 0.0f),
         glm::vec3(0.0f, 0.0f, 1.0f)
     );
@@ -300,6 +322,18 @@ int main()
         float time =  (float)glfwGetTime();
         glUniform1f(timePos, time*2.f);
         glUniform1f(forcePos, force);
+        glUniform1f(uniAmp, amp);
+        quatRot = glm::rotate(quatRot, DEG2RAD(1), glm::vec3(0.f, 0.f, 1.f));
+        //trans = glm::scale(glm::mat4_cast(quatRot), glm::vec3(size*sin(time*4)));
+        //trans = glm::rotate(trans, DEG2RAD(time*6), glm::vec3(0.0f, 0.0f, 1.0f));
+        glUniformMatrix4fv(uniTrans, 1, GL_FALSE, glm::value_ptr(glm::mat4_cast(quatRot)));
+
+        view = glm::lookAt(
+            cameraPos,
+            glm::vec3(0.0f, 0.0f, 0.0f),
+            glm::vec3(0.0f, 0.0f, 1.0f)
+        );
+        glUniformMatrix4fv(uniView, 1, GL_FALSE, glm::value_ptr(view));
 
         // Clear the screen to black
         glClearColor(bgColor[0], bgColor[1], bgColor[2], 1.0f);
