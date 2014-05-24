@@ -26,16 +26,17 @@ const GLchar *vxShaderSrc = R"(
 #version 150 core
 
 in vec3 position;
-in vec4 color;
+in vec3 color;
 in vec2 texcoord;
 uniform mat4 model, view, proj;
+uniform vec3 overrideColor;
 
-out vec4 Color;
+out vec3 Color;
 out vec2 Texcoord;
 
 void main()
 {
-    Color = color;
+    Color = overrideColor * color;
     Texcoord = texcoord;
     gl_Position = proj * view * model * vec4(position, 1.0);
 }
@@ -44,7 +45,7 @@ void main()
 const GLchar *fragShaderSrc = R"(
 #version 150 core
 
-in vec4 Color;
+in vec3 Color;
 in vec2 Texcoord;
 uniform float time, force, amp;
 out vec4 outColor;
@@ -52,9 +53,9 @@ uniform sampler2D tex, tex2;
 
 void main()
 {
-    vec4 texC1 = texture(tex, Texcoord),
-         texC2 = texture(tex2, vec2(Texcoord.x + force*sin((Texcoord.y * 60.0 + time)*amp) / 3.0, Texcoord.y));
-    outColor = vec4(mix(texC1, texC2, 1.0).rgb, Texcoord.y);
+    vec4 texC1 = texture(tex, Texcoord)*vec4(Color, 1.f),
+         texC2 = texture(tex2, vec2(Texcoord.x + force*sin((Texcoord.y * 60.0 + time)*amp) / 3.0, Texcoord.y))*vec4(Color, 1.f);
+    outColor = vec4(mix(texC1, texC2, 1.0).rgb, max(1.f, Texcoord.y<0.2f?Texcoord.y/.2f:1.f));
 
 }
 )";
@@ -124,6 +125,7 @@ int main()
      // Initialize AntTweakBar
     TwInit(TW_OPENGL_CORE, NULL);
 
+    glEnable(GL_DEPTH_TEST);
     glEnable (GL_BLEND);
     glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -133,7 +135,7 @@ int main()
     int wire = 0;
     float force = 0.05, amp = 1.f, size = 1.f;
     float bgColor[] = { 0.1f, 0.2f, 0.4f };
-    glm::vec3 cameraPos(1.f, 1.f, 1.f);
+    glm::vec3 cameraPos(1.5f, 1.5f, 1.5f);
     glm::quat quatRot;
     TwDefine(" GLOBAL help='This example shows how to integrate AntTweakBar with GLFW and OpenGL.' "); // Message added to the help bar.
     // Add 'wire' to 'bar': it is a modifable variable of type TW_TYPE_BOOL32 (32 bits boolean). Its key shortcut is [w].
@@ -187,15 +189,54 @@ int main()
     std::cout << "Created Arrray with id " << vbo << "\n";
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     GLfloat vertices[] = {
-        -0.5f, -0.5f, -0.5f, 1.f, 1.f, 1.0f, 1.f, 0.f, 0.f,
-        -0.5f,  0.5f, -0.5f, 1.0f, 0.0f, 0.0f, 1.f, 0.f, 1.f,
-        0.5f, -0.5f, -0.5f, 0.0f, 0.f, 1.0f, 1.f, 1.f, 0.f,
-        0.5f, 0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.f, 1.f, 1.f,
+        -0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+         0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+         0.5f,  0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+         0.5f,  0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+        -0.5f,  0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
 
-        -0.5f, -0.5f, 0.5f, 1.f, 1.f, 1.0f, 1.f, 0.f, 0.f,
-        -0.5f,  0.5f, 0.5f, 1.0f, 0.0f, 0.0f, 1.f, 0.f, 1.f,
-        0.5f, -0.5f, 0.5f, 0.0f, 0.f, 1.0f, 1.f, 1.f, 0.f,
-        0.5f, 0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 1.f, 1.f, 1.f,
+        -0.5f, -0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+         0.5f, -0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+         0.5f,  0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+         0.5f,  0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+        -0.5f,  0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+
+        -0.5f,  0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+
+         0.5f,  0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+         0.5f,  0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+         0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+         0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+         0.5f, -0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+         0.5f,  0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+
+        -0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+         0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+         0.5f, -0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+         0.5f, -0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+        -0.5f, -0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+        -0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+        -0.5f,  0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+         0.5f,  0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+         0.5f,  0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+         0.5f,  0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+        -1.0f, -1.0f, -0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+         1.0f, -1.0f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+         1.0f,  1.0f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f,
+         1.0f,  1.0f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f,
+        -1.0f,  1.0f, -0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f,
+        -1.0f, -1.0f, -0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f
     };
 
     // size is actually sizeof(float)*vertices.length
@@ -270,22 +311,20 @@ int main()
     // this is the actual output by default
     glBindFragDataLocation(shaderProgram, 0, "outColor");
 
-    glLinkProgram(shaderProgram); // called everytime somethign change for the shader
+    glLinkProgram(shaderProgram); // called everytime somethign change for the shader (attribs, code)
     glUseProgram(shaderProgram);
 
     GLint posAttrib = glGetAttribLocation(shaderProgram, "position");
     glEnableVertexAttribArray(posAttrib);
-    glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, 9*sizeof(GLfloat), 0);
+    glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 8*sizeof(GLfloat), 0);
     GLint colAttrib = glGetAttribLocation(shaderProgram, "color");
     glEnableVertexAttribArray(colAttrib);
-    glVertexAttribPointer(colAttrib, 4, GL_FLOAT, GL_FALSE,
-                          9*sizeof(GLfloat), (void*)(3*sizeof(GLfloat)));
+    glVertexAttribPointer(colAttrib, 3, GL_FLOAT, GL_FALSE,
+                          8*sizeof(GLfloat), (void*)(3*sizeof(GLfloat)));
     GLint texAttrib = glGetAttribLocation(shaderProgram, "texcoord");
     glEnableVertexAttribArray(texAttrib);
     glVertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE,
-                           9*sizeof(float), (void*)(7*sizeof(float)));
-
-    GLint uniPos = glGetUniformLocation(shaderProgram, "offset");
+                           8*sizeof(float), (void*)(6*sizeof(float)));
 
     glUniform1i(glGetUniformLocation(shaderProgram, "tex"), 0);
     glUniform1i(glGetUniformLocation(shaderProgram, "tex2"), 1);
@@ -294,11 +333,11 @@ int main()
           forcePos = glGetUniformLocation(shaderProgram, "force"),
           uniAmp = glGetUniformLocation(shaderProgram, "amp");
 
-    glm::mat4 trans;
-    trans = glm::rotate(trans, DEG2RAD(160.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    glm::mat4 model;
+    model = glm::rotate(model, DEG2RAD(160.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 
-    GLint uniTrans = glGetUniformLocation(shaderProgram, "model");
-    glUniformMatrix4fv(uniTrans, 1, GL_FALSE, glm::value_ptr(trans));
+    GLint uniModel = glGetUniformLocation(shaderProgram, "model");
+    glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
 
     glm::mat4 view = glm::lookAt(
         cameraPos,
@@ -312,6 +351,9 @@ int main()
     GLint uniProj = glGetUniformLocation(shaderProgram, "proj");
     glUniformMatrix4fv(uniProj, 1, GL_FALSE, glm::value_ptr(proj));
 
+    GLint uniColor = glGetUniformLocation(shaderProgram, "overrideColor");
+    glUniform3f(uniColor, 1.0f, 1.0f, 1.0f);
+
     while(!glfwWindowShouldClose(window))
     {
         if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
@@ -323,10 +365,11 @@ int main()
         glUniform1f(timePos, time*2.f);
         glUniform1f(forcePos, force);
         glUniform1f(uniAmp, amp);
+        model = glm::mat4_cast(quatRot);
         quatRot = glm::rotate(quatRot, DEG2RAD(1), glm::vec3(0.f, 0.f, 1.f));
-        //trans = glm::scale(glm::mat4_cast(quatRot), glm::vec3(size*sin(time*4)));
-        //trans = glm::rotate(trans, DEG2RAD(time*6), glm::vec3(0.0f, 0.0f, 1.0f));
-        glUniformMatrix4fv(uniTrans, 1, GL_FALSE, glm::value_ptr(glm::mat4_cast(quatRot)));
+        //model = glm::scale(glm::mat4_cast(quatRot), glm::vec3(size*sin(time*4)));
+        //model = glm::rotate(model, DEG2RAD(time*6), glm::vec3(0.0f, 0.0f, 1.0f));
+        glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
 
         view = glm::lookAt(
             cameraPos,
@@ -339,10 +382,32 @@ int main()
         glClearColor(bgColor[0], bgColor[1], bgColor[2], 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        //glUniform2f(uniPos, cos(time*4.f)*0.5f, sin(time*4.f)*0.5f);
-        glDrawElements(GL_TRIANGLE_STRIP, 4, GL_UNSIGNED_INT, 0); // we can share vertex and we specify indexes
+        glDrawArrays(GL_TRIANGLES, 0, 36);
 
-        glUniform2f(uniPos, 0.f, 0.f);
+        glEnable(GL_STENCIL_TEST);
+        glUniform1i(glGetUniformLocation(shaderProgram, "tex2"), 2);
+        glStencilFunc(GL_ALWAYS, 1, 0xFF); // Set any stencil to 1
+        glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+        glStencilMask(0xFF); // Write to stencil buffer
+        glDepthMask(GL_FALSE);
+        glClear(GL_STENCIL_BUFFER_BIT); // Clear stencil buffer (0 by default)
+        glDrawArrays(GL_TRIANGLES, 36, 6);
+        glStencilFunc(GL_EQUAL, 1, 0xFF); // Pass test if stencil value is 1
+        glStencilMask(0x00); // Don't write anything to stencil buffer
+        glDepthMask(GL_TRUE); // Write to depth buffer
+        glUniform1i(glGetUniformLocation(shaderProgram, "tex2"), 1);
+
+        glUniform3f(uniColor, 0.3f, 0.3f, 0.3f);
+        model = glm::scale(
+            glm::translate(model, glm::vec3(0, 0, -1)),
+            glm::vec3(1, 1, -1)
+        );
+        glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+        glDisable(GL_STENCIL_TEST);
+        glUniform3f(uniColor, 1.0f, 1.0f, 1.0f);
+        //glDrawElements(GL_TRIANGLE_STRIP, 4, GL_UNSIGNED_INT, 0); // we can share vertex and we specify indexes
+
         // Draw tweak bars
         glUseProgram(0);
         glBindVertexArray(0);
